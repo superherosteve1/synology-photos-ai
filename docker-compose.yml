@@ -1,0 +1,23 @@
+services:
+  synology-photos-ai:
+    build: .
+    env_file: .env
+    environment:
+      STATE_PATH: /data/processed.db
+      # Point at Ollama/Open WebUI on your GPU machine (LAN IP, not localhost).
+      # When running ON a Synology NAS, set SYNOLOGY_HOST in .env to the NAS LAN IP.
+      # OPENAI_API_BASE: http://192.168.1.50:11434/v1
+    volumes:
+      - synology-photos-ai-state:/data
+    restart: unless-stopped
+    command: ["watch"]
+    # Uncomment if Ollama runs on the Docker host (Mac/Windows Docker Desktop):
+    # extra_hosts:
+    #   - "host.docker.internal:host-gateway"
+
+  # One-shot batch run:
+  #   docker compose run --rm synology-photos-ai process --limit 10 --dry-run
+  #   docker compose run --rm synology-photos-ai ping
+
+volumes:
+  synology-photos-ai-state:
