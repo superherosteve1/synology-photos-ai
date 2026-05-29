@@ -6,9 +6,9 @@ A Python companion for [Synology Photos](https://www.synology.com/en-us/dsm/feat
 - **Tag** photos with searchable general tags in Synology Photos
 - **Watch** the Recently Added feed and process new uploads automatically
 
-This app talks to Synology Photos over the network and sends **photo thumbnails** to a vision model for analysis. The recommended setup is a **local [Ollama](https://ollama.com) instance on your own hardware** — your images never leave your network and are not sent to OpenAI, Google, or any other third-party AI service. OpenAI cloud is supported as an optional alternative if you explicitly configure it.
+This app talks to Synology Photos over the network and sends **photo thumbnails** to a vision model for analysis. The recommended setup is a **local [Ollama](https://ollama.com) instance on your own hardware** — your images never leave your network. You can also point `OPENAI_API_BASE` at any **OpenAI-compatible** endpoint (Open WebUI, Google Gemini, Azure OpenAI, etc.); see [OpenAI-compatible endpoints](README.md#openai-compatible-endpoints). Native OpenAI cloud works when `OPENAI_API_BASE` is unset.
 
-Many Synology NAS models can run this app themselves via **Container Manager** (Docker) — a common layout is: companion container on the NAS, vision inference on a separate GPU machine on your LAN. See [Running on Synology NAS](#running-on-synology-nas-container-manager).
+Many Synology NAS models can run this app themselves via **Container Manager** (Docker) — a common layout is: companion container on the NAS, vision inference on a separate GPU machine on your LAN. See [Running on Synology NAS](README.md#running-on-synology-nas-container-manager).
 
 Synology does not publish an official Photos API. This project builds on community reverse-engineering documented in [zeichensatz/SynologyPhotosAPI](https://github.com/zeichensatz/SynologyPhotosAPI).
 
@@ -39,6 +39,7 @@ Photo libraries on a Synology NAS are often personal — holidays, children, hom
 | **Local Ollama** (recommended) | Your GPU machine on the LAN | Photos stay on your network; no third-party AI sees them |
 | **Open WebUI `/ollama/v1`** (self-hosted) | Your Open WebUI server → your Ollama backend | Same as above, as long as Open WebUI and Ollama are yours |
 | **OpenAI cloud** (`OPENAI_API_BASE` unset) | OpenAI's servers over the internet | Thumbnails are sent to a third party — only use if you accept that |
+| **Other cloud / proxy** (custom `OPENAI_API_BASE`, e.g. Google Gemini) | That provider's servers | Same as OpenAI cloud — read their terms; see [OpenAI-compatible endpoints](README.md#openai-compatible-endpoints) |
 
 What this app sends for analysis is a **downscaled thumbnail** from Synology Photos, not necessarily the full-resolution original — but that thumbnail can still be sensitive. With local Ollama, the flow is: NAS → this app → your Ollama host → tags/descriptions back to NAS. Nothing transits the public internet unless you choose OpenAI cloud or expose Ollama/Open WebUI outside your network.
 
@@ -50,16 +51,16 @@ What this app sends for analysis is a **downscaled thumbnail** from Synology Pho
 
 ## Requirements
 
-- **Synology NAS** with Synology Photos installed, plus a [DSM service account](#dsm-service-account-2fa--shared-space) if your main user has 2FA
-- **Ollama** on a separate machine with a **vision model** (default **`llava-llama3`**; or `bakllava` for fast bulk runs) — see [Vision hardware](#vision-hardware-typical) for GPU/RAM guidance
+- **Synology NAS** with Synology Photos installed, plus a [DSM service account](README.md#dsm-service-account-2fa--shared-space) if your main user has 2FA
+- **Ollama** on a separate machine with a **vision model** (default **`llava-llama3`**; or `bakllava` for fast bulk runs) — see [Vision hardware](README.md#vision-hardware-typical) for GPU/RAM guidance
   - Connect **directly** (`http://<gpu-host>:11434/v1`) or **via [Open WebUI](https://docs.openwebui.com)** (`http://<open-webui-host>:<port>/ollama/v1`)
   - The app host must reach whichever endpoint you configure
 - **Where to run this app** (pick one):
-  - **On the Synology NAS** via [Container Manager](#running-on-synology-nas-container-manager) (Docker) — no separate server needed
+  - **On the Synology NAS** via [Container Manager](README.md#running-on-synology-nas-container-manager) (Docker) — no separate server needed
   - **Python 3.11+** on any Linux/macOS/Windows host
   - **Docker** on any Docker-capable machine
 
-Alternatively, use OpenAI cloud by omitting `OPENAI_API_BASE` — see [Privacy](#privacy) before doing so.
+Alternatively, use OpenAI cloud by omitting `OPENAI_API_BASE` — see [Privacy](README.md#privacy) before doing so.
 
 ## Quick start
 
@@ -86,9 +87,9 @@ OPENAI_MODEL=llava-llama3
 
 Pull the model on your Ollama host first: `ollama pull llava-llama3`
 
-If Ollama is fronted by **Open WebUI**, use its Ollama proxy instead — see [Open WebUI](#open-webui-ollama-proxy).
+If Ollama is fronted by **Open WebUI**, use its Ollama proxy instead — see [Open WebUI](README.md#open-webui-ollama-proxy).
 
-If your main DSM account has **2FA** enabled, create a [dedicated service account](#dsm-service-account-2fa--shared-space) and use **Shared Space** so that user can see your library.
+If your main DSM account has **2FA** enabled, create a [dedicated service account](README.md#dsm-service-account-2fa--shared-space) and use **Shared Space** so that user can see your library.
 
 ### 2. Install and run (local)
 
@@ -106,7 +107,7 @@ synology-photos-ai watch                             # poll Recently Added
 
 ### 3. Or run with Docker
 
-The container runs only this app. Ollama stays on your GPU machine. This includes [running on the Synology NAS itself](#running-on-synology-nas-container-manager).
+The container runs only this app. Ollama stays on your GPU machine. This includes [running on the Synology NAS itself](README.md#running-on-synology-nas-container-manager).
 
 ```bash
 docker compose build
@@ -115,7 +116,7 @@ docker compose run --rm synology-photos-ai process --limit 5 --dry-run
 docker compose up -d    # background watcher
 ```
 
-See [Docker](#docker) for networking details.
+See [Docker](README.md#docker) for networking details.
 
 ## Configuration
 
@@ -123,19 +124,19 @@ See [Docker](#docker) for networking details.
 | --- | --- |
 | `SYNOLOGY_HOST` | NAS hostname or IP with HTTPS port if needed (e.g. `192.168.1.10:5001`). No `https://` prefix. When the container runs **on the NAS**, use the NAS LAN IP, not `localhost`. |
 | `SYNOLOGY_PHOTOS_ALIAS` | Custom URL alias for Synology Photos (default `photo`). Set **empty** if Photos is only opened via DSM (`?launchApp=SYNO.Foto…`) and `/photo/webapi` returns HTTP 403 — the app will use `/webapi/entry.cgi` on port 5001 instead. |
-| `SYNOLOGY_USERNAME` / `SYNOLOGY_PASSWORD` | DSM account for API login — see [DSM service account](#dsm-service-account-2fa--shared-space). Quote the password if it contains `#` with a space before it. |
-| `SYNOLOGY_SPACE` | `personal` (logged-in user’s Photos tab) or `shared` ([Shared Space](#shared-space-library) — typical for a service account) |
+| `SYNOLOGY_USERNAME` / `SYNOLOGY_PASSWORD` | DSM account for API login — see [DSM service account](README.md#dsm-service-account-2fa--shared-space). Quote the password if it contains `#` with a space before it. |
+| `SYNOLOGY_SPACE` | `personal` (logged-in user’s Photos tab) or `shared` ([Shared Space](README.md#shared-space-library) — typical for a service account) |
 | `SYNOLOGY_THUMBNAIL_SIZE` | NAS thumbnail: `sm` (default, ~360px), `m`, or `xl`. Use `sm` with Ollama |
 | `VISION_MAX_EDGE` | Resize before vision API (default `512` px longest edge; `0` = off). Cuts Ollama encode time |
 | `SYNOLOGY_VERIFY_SSL` | Set `true` if using a valid TLS cert |
-| `OPENAI_API_BASE` | Vision API base URL — see [Direct Ollama](#direct-ollama) or [Open WebUI](#open-webui-ollama-proxy). Leave empty for OpenAI cloud. |
-| `OPENAI_API_KEY` | Open WebUI: API key from Settings → Account. Direct Ollama: any non-empty string (e.g. `ollama`). OpenAI: real key. |
-| `OPENAI_MODEL` | Vision model on your Ollama host (default **`llava-llama3`**; also `bakllava`, `llama3.2-vision`, …) or OpenAI model |
+| `OPENAI_API_BASE` | Vision API base URL (must end with `/v1`). See [OpenAI-compatible endpoints](README.md#openai-compatible-endpoints), [Ollama](README.md#direct-ollama), or [Open WebUI](README.md#open-webui-ollama-proxy). Leave empty for native OpenAI cloud. |
+| `OPENAI_API_KEY` | Provider API key (or any non-empty string for direct Ollama). |
+| `OPENAI_MODEL` | Model name **as the endpoint expects** (default **`llava-llama3`** on Ollama; e.g. `gpt-4o-mini`, `gemini-2.0-flash`) |
 | `OPENAI_MAX_TOKENS` | Max completion tokens per photo (default `256`). With Ollama this is `num_predict`. Lower = faster; retries use a smaller cap |
 | `TAG_PREFIX` | Prefix for generated tags (default `ai`, e.g. `ai-beach`) |
 | `MAX_TAGS` | Max tags per photo (default 12) |
 | `SKIP_IF_TAGGED` | Skip photos that already have `ai-*` tags (ignored when using `--force`) |
-| `WRITE_DESCRIPTION` | Write description via `Browse.Item.set` (metadata/EXIF field — see [Notes](#notes-and-limitations)) |
+| `WRITE_DESCRIPTION` | Write description via `Browse.Item.set` (metadata/EXIF field — see [Notes](README.md#notes-and-limitations)) |
 | `WATCH_INTERVAL_SECONDS` | Poll interval for `watch` (default 300) |
 | `STATE_PATH` | SQLite state file (default `.state/processed.db`; Docker uses `/data/processed.db`) |
 
@@ -251,6 +252,45 @@ Until uploads consistently land in Shared Space, `watch` and batch `process` wil
 
 Official reference: [DSM Login Web API Guide](https://global.download.synology.com/download/Document/Software/DeveloperGuide/Os/DSM/All/enu/DSM_Login_Web_API_Guide_enu.pdf) (auth error codes).
 
+<a id="openai-compatible-endpoints"></a>
+
+## OpenAI-compatible endpoints
+
+Inference uses LangChain’s `ChatOpenAI`, which calls **`POST {OPENAI_API_BASE}/chat/completions`** with an image + text in the chat payload. Any provider that implements the **OpenAI Chat Completions API** (including multimodal / vision messages) can be used — you are not limited to Ollama or OpenAI.
+
+| Approach | `OPENAI_API_BASE` | Notes |
+| --- | --- | --- |
+| **Local Ollama** (recommended) | `http://<gpu-host>:11434/v1` | Private LAN; see [Ollama](README.md#ollama-external-instance) |
+| **Open WebUI** | `http://<host>:<port>/ollama/v1` | Proxies to Ollama; see [Open WebUI](README.md#open-webui-ollama-proxy) |
+| **OpenAI** | *(leave empty)* | Uses the official API + structured output; see [OpenAI cloud](README.md#using-openai-cloud-instead) |
+| **Google Gemini** | `https://generativelanguage.googleapis.com/v1beta/openai/` | [OpenAI-compatible Gemini API](https://ai.google.dev/gemini-api/docs/openai); vision model e.g. `gemini-2.0-flash` |
+| **Azure OpenAI** | Your deployment URL + `/openai/v1` | Model name = your deployment id |
+| **Other gateways** | LiteLLM, vLLM, Together, etc. | Point at whatever exposes `/v1/chat/completions` |
+
+Example — **Google Gemini** (thumbnails sent to Google; see [Privacy](README.md#privacy)):
+
+```bash
+OPENAI_API_BASE=https://generativelanguage.googleapis.com/v1beta/openai/
+OPENAI_API_KEY=your-gemini-api-key
+OPENAI_MODEL=gemini-2.0-flash
+```
+
+Example — **OpenAI via explicit base URL** (equivalent to leaving `OPENAI_API_BASE` empty for many setups):
+
+```bash
+OPENAI_API_BASE=https://api.openai.com/v1
+OPENAI_API_KEY=sk-...
+OPENAI_MODEL=gpt-4o-mini
+```
+
+**Requirements for any endpoint**
+
+- The model must accept **vision** input (`image_url` in the user message).
+- The base URL should include the **`/v1`** suffix (no trailing path beyond that).
+- Run `synology-photos-ai process --limit 3 --dry-run` after changing providers.
+
+**Ollama-specific behavior:** When `OPENAI_API_BASE` is set, the app also sends Ollama-oriented fields (`format: json`, `options.num_predict`) for better tagging on local models. Most other providers ignore unknown JSON fields; if a provider rejects them, use native OpenAI (`OPENAI_API_BASE` empty) or a proxy that strips extras. Non-Ollama endpoints may work best with models that return clean JSON; otherwise fallbacks derive tags from the description text.
+
 ## Ollama (external instance)
 
 **Why local Ollama?** Vision analysis runs entirely on hardware you control. Private photos are not shared with external AI services — only with the model running on your GPU box (or a machine on your home network).
@@ -338,7 +378,7 @@ Only **thumbnails** (not full RAW/TIFF originals) are sent to Ollama. A **gigabi
 
 #### OpenAI cloud
 
-If you omit `OPENAI_API_BASE`, inference runs on **OpenAI’s** hardware — no local GPU required. See [Privacy](#privacy) before choosing that path.
+If you omit `OPENAI_API_BASE`, inference runs on **OpenAI’s** hardware — no local GPU required. See [Privacy](README.md#privacy) before choosing that path.
 
 ### Troubleshooting
 
@@ -386,7 +426,7 @@ Reference: [Open WebUI API endpoints](https://docs.openwebui.com/reference/api-e
 
 ### Using OpenAI cloud instead
 
-Leave `OPENAI_API_BASE` empty and set a real `OPENAI_API_KEY` and model (e.g. `gpt-4o-mini`). **This sends thumbnails to OpenAI's servers.** Use only if you are comfortable with third-party processing of your photo content — see [Privacy](#privacy).
+Leave `OPENAI_API_BASE` empty and set a real `OPENAI_API_KEY` and model (e.g. `gpt-4o-mini`). **This sends thumbnails to OpenAI's servers.** Use only if you are comfortable with third-party processing of your photo content — see [Privacy](README.md#privacy).
 
 ## Docker
 
