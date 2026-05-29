@@ -210,26 +210,52 @@ class SynologyPhotosClient:
     def download_thumbnail(self, item: PhotoItem, *, size: str = "xl") -> bytes | None:
         thumb = item.thumbnail
         if not thumb:
+            logger.warning("Photo %s (%s) has no thumbnail metadata from list API", item.id, item.filename)
             return None
-        for candidate in (size, "m", "sm"):
-            if str(thumb.get(candidate, "")).lower() == "ready":
-                response = self._client.post(
-                    self._settings.api_base_url,
-                    data={
-                        "api": self._api.thumbnail,
-                        "version": "1",
-                        "method": "get",
-                        "_sid": self._sid,
-                        "id": thumb["unit_id"],
-                        "type": "unit",
-                        "size": candidate,
-                        "cache_key": thumb["cache_key"],
-                    },
-                )
-                response.raise_for_status()
-                if response.headers.get("content-type", "").startswith("application/json"):
-                    continue
-                return response.content
+        unit_id = thumb.get("unit_id", item.id)
+        cache_key = thumb.get("cache_key")
+        if not cache_key:
+            logger.warning(
+                "Photo %s (%s) missing thumbnail cache_key (states: %s)",
+                item.id,
+                item.filename,
+                {k: thumb.get(k) for k in ("sm", "m", "xl", "preview")},
+            )
+            return None
+        seen: set[str] = set()
+        for candidate in (size, "m", "sm", "xl"):
+            if candidate in seen:
+                continue
+            seen.add(candidate)
+            state = str(thumb.get(candidate, "")).lower()
+            if state != "ready":
+                continue
+            response = self._client.post(
+                self._settings.api_base_url,
+                data={
+                    "api": self._api.thumbnail,
+                    "version": "1",
+                    "method": "get",
+                    "_sid": self._sid,
+                    "id": unit_id,
+                    "type": "unit",
+                    "size": candidate,
+                    "cache_key": cache_key,
+                },
+            )
+            response.raise_for_status()
+            if response.headers.get("content-type", "").startswith("application/json"):
+                continue
+            return response.content
+        logger.warning(
+            "No ready thumbnail for photo %s (%s); NAS states sm=%s m=%s xl=%s preview=%s",
+            item.id,
+            item.filename,
+            thumb.get("sm"),
+            thumb.get("m"),
+            thumb.get("xl"),
+            thumb.get("preview"),
+        )
         return None
 
     def list_tags(self) -> list[TagInfo]:
@@ -274,22 +300,42 @@ class SynologyPhotosClient:
         cache[name] = tag_id
         return tag_id
 
-    def get_item(self, item_id: int) -> PhotoItem:
-        payload = self._post(
-            {
-                "api": self._api.browse_item,
-                "version": "1",
-                "method": "get",
-                "id": self._json_list([item_id]),
-                "additional": self._json_list(LIST_ADDITIONAL),
-            }
-        )
-        data = payload.get("data") or {}
-        if isinstance(data, dict) and "id" in data:
-            return self._parse_item(data)
-        if isinstance(data, dict) and "item" in data:
+    def _parse_get_item_data(self, data: dict[str, Any], item_id: int) -> PhotoItem:
+        """Browse.Item.get often returns data.list (batch), not a single top-level item."""
+        if "list" in data and isinstance(data["list"], list):
+            rows = data["list"]
+            for raw in rows:
+                if isinstance(raw, dict) and raw.get("id") == item_id:
+                    return self._parse_item(raw)
+            if len(rows) == 1 and isinstance(rows[0], dict):
+                return self._parse_item(rows[0])
+        if isinstance(data.get("item"), dict):
             return self._parse_item(data["item"])
-        raise RuntimeError(f"Unexpected get item response for id {item_id}")
+        if "id" in data:
+            return self._parse_item(data)
+        raise RuntimeError(
+            f"Unexpected get item response for id {item_id}: keys={list(data.keys())}"
+        )
+
+    def get_item(self, item_id: int) -> PhotoItem:
+        last_error: Exception | None = None
+        for id_value in (self._json_list([item_id]), item_id):
+            try:
+                payload = self._post(
+                    {
+                        "api": self._api.browse_item,
+                        "version": "1",
+                        "method": "get",
+                        "id": id_value,
+                        "additional": self._json_list(LIST_ADDITIONAL),
+                    }
+                )
+                data = payload.get("data") or {}
+                if isinstance(data, dict):
+                    return self._parse_get_item_data(data, item_id)
+            except Exception as exc:
+                last_error = exc
+        raise RuntimeError(f"Could not get item {item_id}") from last_error
 
     def add_tags_to_items(self, item_ids: list[int], tag_ids: list[int]) -> None:
         if not item_ids or not tag_ids:

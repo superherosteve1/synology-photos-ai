@@ -99,7 +99,16 @@ class PhotoProcessor:
             item, size=self._settings.synology_thumbnail_size
         )
         if not image_bytes:
-            raise RuntimeError(f"No thumbnail available for photo {item.id}")
+            ext = item.filename.rsplit(".", 1)[-1].lower() if "." in item.filename else ""
+            hint = (
+                " RAW/NEF files may need time to index — retry later, or check thumbnail "
+                "status in Photos."
+                if ext in {"nef", "nrw", "arw", "cr2", "cr3", "dng", "orf", "raf", "rw2"}
+                else ""
+            )
+            raise RuntimeError(
+                f"No thumbnail available for photo {item.id} ({item.filename}).{hint}"
+            )
         download_s = time.monotonic() - t0
 
         mime_type = _guess_mime(item.filename)
@@ -227,7 +236,11 @@ class PhotoProcessor:
         try:
             fresh = self._client.get_item(item_id)
         except Exception as exc:
-            logger.warning("Could not verify tags on NAS for item %s: %s", item_id, exc)
+            logger.warning(
+                "Could not verify tags on NAS for item %s (tags may still be applied): %s",
+                item_id,
+                exc,
+            )
             return []
         on_nas = {t.get("name", "") for t in fresh.tags}
         return [name for name in expected if name not in on_nas]
