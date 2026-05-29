@@ -457,7 +457,7 @@ Many **Plus**, **xs**, and **SA** series Synology NAS models support Docker via 
 
 - Container Manager installed (Package Center)
 - Synology Photos installed and working
-- SSH enabled (optional but helpful) or use Container Manager's **Project** UI
+- SSH enabled (optional but helpful) or use Container Manager's **Project** UI — disable SSH when you are not using it (**Control Panel → Terminal & SNMP** → uncheck **Enable SSH service**), per Synology security recommendations
 - Enough free RAM for a small Python container (typically well under 512 MB)
 
 **Suggested layout**
