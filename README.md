@@ -12,6 +12,26 @@ Many Synology NAS models can run this app themselves via **Container Manager** (
 
 Synology does not publish an official Photos API. This project builds on community reverse-engineering documented in [zeichensatz/SynologyPhotosAPI](https://github.com/zeichensatz/SynologyPhotosAPI).
 
+## Examples
+
+Screenshots from **Synology Photos** after running `synology-photos-ai process` (Shared Space, `llava-llama3`).
+
+### Descriptions and tags
+
+AI-generated **description** and **`ai-*` tags** on a photo’s info panel:
+
+![Description and tags — example 1](docs/resources/example_1.png)
+
+![Description and tags — example 2](docs/resources/example_2.png)
+
+### Search by tags
+
+Photos are findable by searching for generated tags (e.g. `ai-mountain`, `ai-lake`):
+
+![Search results by tag — example 3](docs/resources/example_3.png)
+
+![Search results by tag — example 4](docs/resources/example_4.png)
+
 ## Architecture
 
 ```mermaid
