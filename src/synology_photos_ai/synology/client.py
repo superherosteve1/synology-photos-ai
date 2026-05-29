@@ -274,6 +274,23 @@ class SynologyPhotosClient:
         cache[name] = tag_id
         return tag_id
 
+    def get_item(self, item_id: int) -> PhotoItem:
+        payload = self._post(
+            {
+                "api": self._api.browse_item,
+                "version": "1",
+                "method": "get",
+                "id": self._json_list([item_id]),
+                "additional": self._json_list(LIST_ADDITIONAL),
+            }
+        )
+        data = payload.get("data") or {}
+        if isinstance(data, dict) and "id" in data:
+            return self._parse_item(data)
+        if isinstance(data, dict) and "item" in data:
+            return self._parse_item(data["item"])
+        raise RuntimeError(f"Unexpected get item response for id {item_id}")
+
     def add_tags_to_items(self, item_ids: list[int], tag_ids: list[int]) -> None:
         if not item_ids or not tag_ids:
             return
@@ -290,6 +307,9 @@ class SynologyPhotosClient:
                     "tag": self._json_list(tag_ids),
                 }
             )
+
+    def add_tag_to_item(self, item_id: int, tag_id: int) -> None:
+        self.add_tags_to_items([item_id], [tag_id])
 
     def remove_tags_from_items(self, item_ids: list[int], tag_ids: list[int]) -> None:
         if not item_ids or not tag_ids:

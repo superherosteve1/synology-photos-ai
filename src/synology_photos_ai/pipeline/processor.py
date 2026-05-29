@@ -163,18 +163,7 @@ class PhotoProcessor:
                 f"[yellow]Warning:[/yellow] no tags generated for {item.filename}"
             )
         else:
-            tag_ids = [
-                self._client.ensure_tag(name, tag_cache)
-                for name in analysis.tags
-            ]
-            self._client.add_tags_to_items([item.id], tag_ids)
-            logger.info(
-                "Applied %d tag(s) to photo %s (%s): %s",
-                len(tag_ids),
-                item.id,
-                item.filename,
-                ", ".join(analysis.tags),
-            )
+            self._apply_tags(item, analysis.tags, tag_cache=tag_cache)
 
         self._store.mark_processed(
             ProcessState(
@@ -187,6 +176,61 @@ class PhotoProcessor:
             )
         )
         return PhotoAnalysisResult(item=item, analysis=analysis)
+
+    def _apply_tags(
+        self,
+        item: PhotoItem,
+        tag_names: list[str],
+        *,
+        tag_cache: dict[str, int],
+    ) -> None:
+        tag_ids = [self._client.ensure_tag(name, tag_cache) for name in tag_names]
+        self._client.add_tags_to_items([item.id], tag_ids)
+        logger.info(
+            "Applied %d tag(s) to photo %s (%s): %s",
+            len(tag_ids),
+            item.id,
+            item.filename,
+            ", ".join(tag_names),
+        )
+        missing = self._tags_missing_on_nas(item.id, expected=tag_names)
+        if not missing:
+            return
+        logger.warning(
+            "NAS missing %d tag(s) after add_tag for %s (%s): %s",
+            len(missing),
+            item.id,
+            item.filename,
+            ", ".join(missing),
+        )
+        console.print(
+            f"[yellow]Warning:[/yellow] re-applying {len(missing)} tag(s) one-by-one for "
+            f"{item.filename}"
+        )
+        for name in missing:
+            tag_id = self._client.ensure_tag(name, tag_cache)
+            self._client.add_tag_to_item(item.id, tag_id)
+        still_missing = self._tags_missing_on_nas(item.id, expected=tag_names)
+        if still_missing:
+            logger.warning(
+                "Tags still missing on NAS for %s (%s): %s",
+                item.id,
+                item.filename,
+                ", ".join(still_missing),
+            )
+            console.print(
+                f"[yellow]Warning:[/yellow] tags not visible on NAS for {item.filename}: "
+                f"{', '.join(still_missing)} — check the JPG/NEF pair in Photos"
+            )
+
+    def _tags_missing_on_nas(self, item_id: int, *, expected: list[str]) -> list[str]:
+        try:
+            fresh = self._client.get_item(item_id)
+        except Exception as exc:
+            logger.warning("Could not verify tags on NAS for item %s: %s", item_id, exc)
+            return []
+        on_nas = {t.get("name", "") for t in fresh.tags}
+        return [name for name in expected if name not in on_nas]
 
     def _existing_prefix_tag_names(self, item: PhotoItem) -> list[str]:
         prefix = self._settings.tag_prefix.strip()
