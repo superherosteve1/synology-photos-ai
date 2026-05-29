@@ -18,17 +18,21 @@ Synology does not publish an official Photos API. This project builds on communi
 flowchart LR
   subgraph NAS[Synology NAS]
     Photos[Synology Photos]
-    App[synology-photos-ai container]
+    App[synology-photos-ai]
+  end
+  subgraph Vision[OpenAI-compatible /v1 endpoint]
+    direction TB
+    Local[Ollama or Open WebUI on LAN]
+    Cloud[OpenAI · Gemini · Azure · …]
   end
   Photos <-->|Photos API| App
-  App -->|thumbnails| OWUI[Open WebUI /ollama/v1]
-  OWUI -->|proxy| Ollama[Ollama on GPU host]
-  App -.->|or direct| Ollama
-  Ollama -->|description + tags| App
+  App -->|thumbnails| Vision
+  Local -.->|recommended| GPU[GPU host]
+  Vision -->|description + tags| App
   App --> State[(SQLite state)]
 ```
 
-The companion app is lightweight — it does **not** run Ollama or load models. It can run on the NAS (Docker), on another server, or on your laptop. Inference runs on **your** Ollama instance (directly or via a self-hosted Open WebUI on your LAN), so private family photos stay under your control.
+The companion app is lightweight — it does **not** run vision models itself. It can run on the NAS (Docker), on another server, or on your laptop. Point `OPENAI_API_BASE` at any **OpenAI-compatible** chat/completions URL (local Ollama is the usual choice for privacy; cloud providers work too). See [OpenAI-compatible endpoints](README.md#openai-compatible-endpoints).
 
 ## Privacy
 
