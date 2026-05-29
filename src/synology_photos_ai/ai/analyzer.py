@@ -44,6 +44,45 @@ _STOPWORDS = frozenset(
         "photo",
         "image",
         "picture",
+        "the",
+        "and",
+        "for",
+        "are",
+        "was",
+        "not",
+        "but",
+        "you",
+        "she",
+        "her",
+        "his",
+        "its",
+        "our",
+        "who",
+        "how",
+        "why",
+        "can",
+        "may",
+        "all",
+        "any",
+        "out",
+        "off",
+        "one",
+        "two",
+        "three",
+        "also",
+        "very",
+        "just",
+        "only",
+        "some",
+        "such",
+        "than",
+        "then",
+        "captures",
+        "capture",
+        "scene",
+        "serene",
+        "majestic",
+        "individual",
     }
 )
 
@@ -283,6 +322,15 @@ class PhotoAnalyzer:
         if retried is not None:
             return retried
 
+        short = self._try_short_text_fallback(content)
+        if short is not None:
+            logger.info(
+                "Using short-text fallback for %s (%d tag(s) from description words)",
+                filename,
+                len(short.tags),
+            )
+            return short
+
         ramble = self._try_ramble_fallback(content)
         if ramble is not None:
             logger.info(
@@ -293,12 +341,14 @@ class PhotoAnalyzer:
             )
             return ramble
         if self._looks_like_description(content):
+            derived = self._from_plain_description(content)
             logger.warning(
-                "Using plain-text description from %s for %s (no tags from model)",
+                "Using plain-text description from %s for %s (%d tag(s) from description words)",
                 self._model,
                 filename,
+                len(derived.tags),
             )
-            return self._from_plain_description(content)
+            return derived
         raise ValueError(
             f"Model {self._model} did not return usable JSON or description for {filename}"
         )
@@ -317,13 +367,32 @@ class PhotoAnalyzer:
             return PhotoAnalysis.model_validate_json(match.group())
         raise ValueError(f"Model did not return valid JSON: {text[:300]!r}")
 
+    def _first_line_snippet(self, content: str) -> str | None:
+        text = content.strip()
+        if "{" in text[:400]:
+            return None
+        snippet = text[:500].split("\n\n")[0].split("\n")[0].strip()
+        if not self._looks_like_description(snippet):
+            return None
+        return snippet
+
+    def _try_short_text_fallback(self, content: str) -> PhotoAnalysis | None:
+        """Non-JSON replies under 400 chars (too short for ramble fallback)."""
+        text = content.strip()
+        if len(text) < 120 or len(text) >= 400:
+            return None
+        snippet = self._first_line_snippet(content)
+        if not snippet:
+            return None
+        return self._from_plain_description(snippet)
+
     def _try_ramble_fallback(self, content: str) -> PhotoAnalysis | None:
         """Last resort when JSON and a vision retry both failed — use the first paragraph."""
         text = content.strip()
         if len(text) < 400 or "{" in text[:600]:
             return None
-        snippet = text[:500].split("\n\n")[0].split("\n")[0].strip()
-        if not self._looks_like_description(snippet):
+        snippet = self._first_line_snippet(content)
+        if not snippet:
             return None
         return self._from_plain_description(snippet)
 
