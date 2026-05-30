@@ -162,7 +162,7 @@ Third full **`process --force`** on the same Shared Space library, with **newer 
 | **Avg description** | ~116 chars | ~136 chars |
 | **Location in captions** | Generic unless obvious | City/country from Synology geocoding when GPS exists |
 
-**Takeaway:** Larger NAS thumbnails + **`VISION_MAX_EDGE=1024`** and **`USE_LOCATION_IN_PROMPT=true`** cost wall-clock time vs Run 2, but vision inference alone stayed ~sub-second per photo in logs — most of the delta is download/resize and NAS writes. For bulk re-tags, **`m`** + **`768`** on the **4500** remains faster; use Run 3’s settings when you want **richer thumbnails** and **factual place names** in prompts.
+**Takeaway:** Larger NAS thumbnails + **`VISION_MAX_EDGE=1024`** and **`USE_LOCATION_IN_PROMPT=true`** cost wall-clock time vs Run 2, but vision inference alone stayed ~sub-second per photo in logs — most of the delta is download/resize and NAS writes. That extra time is mostly a **one-time** cost on a full `process --force` pass; after that, [`watch`](README.md#bulk-pass-vs-watch-resolution-and-cost) only handles new uploads (see [Bulk pass vs watch](README.md#bulk-pass-vs-watch-resolution-and-cost)).
 
 
 ### What worked well
@@ -249,7 +249,7 @@ Cloud vision APIs bill **per token**, not per photo. This app sends a **downscal
 | Mid cloud (gpt-4o, Gemini Flash) | **~$25–150** |
 | Local Ollama | **$0 API** (your GPU + power) |
 
-Actual cloud cost depends on **`SYNOLOGY_THUMBNAIL_SIZE`**, **`VISION_MAX_EDGE`**, **`OPENAI_MAX_TOKENS`**, and provider image-token rules. With **`REUSE_JPEG_ANALYSIS_FOR_RAW=true`**, you pay for **one vision call per scene**, not separate JPG + NEF calls. **`PROCESS_PARALLEL=2`** (or higher) can shorten wall-clock time on cloud endpoints without changing per-photo cost.
+Actual cloud cost depends on **`SYNOLOGY_THUMBNAIL_SIZE`**, **`VISION_MAX_EDGE`**, **`OPENAI_MAX_TOKENS`**, and provider image-token rules. With **`REUSE_JPEG_ANALYSIS_FOR_RAW=true`**, you pay for **one vision call per scene**, not separate JPG + NEF calls. **`PROCESS_PARALLEL=2`** (or higher) can shorten wall-clock time on cloud endpoints without changing per-photo cost. **Resolution hits cost hardest on the initial full-library pass** — ongoing `watch` traffic is tiny by comparison; see [Bulk pass vs watch](README.md#bulk-pass-vs-watch-resolution-and-cost).
 
 Check current rates before bulk runs: [OpenAI pricing](https://openai.com/api/pricing), [Gemini API pricing](https://ai.google.dev/gemini-api/docs/pricing). Use `process --limit 10 --dry-run` on a cloud endpoint to validate billing on your account.
 
@@ -330,8 +330,8 @@ See [Docker](README.md#docker) for networking details.
 | `SYNOLOGY_PHOTOS_ALIAS` | Custom URL alias for Synology Photos (default `photo`). Set **empty** if Photos is only opened via DSM (`?launchApp=SYNO.Foto…`) and `/photo/webapi` returns HTTP 403 — the app will use `/webapi/entry.cgi` on port 5001 instead. |
 | `SYNOLOGY_USERNAME` / `SYNOLOGY_PASSWORD` | DSM account for API login — see [DSM service account](README.md#dsm-service-account-2fa--shared-space). Quote the password if it contains `#` with a space before it. |
 | `SYNOLOGY_SPACE` | `personal` (logged-in user’s Photos tab) or `shared` ([Shared Space](README.md#shared-space-library) — typical for a service account) |
-| `SYNOLOGY_THUMBNAIL_SIZE` | NAS thumbnail: `sm` (default, ~360px), `m`, or `xl`. Use `sm` with Ollama |
-| `VISION_MAX_EDGE` | Resize before vision API (default `512` px longest edge; `0` = off). Cuts Ollama encode time |
+| `SYNOLOGY_THUMBNAIL_SIZE` | NAS thumbnail: `sm` (default, ~360px), `m`, `l`, or `xl`. Larger sizes slow bulk runs but matter little for [`watch`](README.md#bulk-pass-vs-watch-resolution-and-cost) — see [Bulk pass vs watch](README.md#bulk-pass-vs-watch-resolution-and-cost) |
+| `VISION_MAX_EDGE` | Resize before vision API (default `512` px longest edge; `0` = off). Higher values improve detail on the **first** full pass; same tradeoff for [cloud cost](README.md#cloud-inference-cost-typical) |
 | `SYNOLOGY_VERIFY_SSL` | Set `true` if using a valid TLS cert |
 | `OPENAI_API_BASE` | Vision API base URL (must end with `/v1`). See [OpenAI-compatible endpoints](README.md#openai-compatible-endpoints), [Ollama](README.md#direct-ollama), or [Open WebUI](README.md#open-webui-ollama-proxy). Leave empty for native OpenAI cloud. |
 | `OPENAI_API_KEY` | Provider API key (or any non-empty string for direct Ollama). |
@@ -348,6 +348,29 @@ See [Docker](README.md#docker) for networking details.
 | `WRITE_DESCRIPTION` | Write description via `Browse.Item.set` (metadata/EXIF field — see [Notes](README.md#notes-and-limitations)) |
 | `WATCH_INTERVAL_SECONDS` | Poll interval for `watch` (default 300) |
 | `STATE_PATH` | SQLite state file (default `.state/processed.db`; Docker uses `/data/processed.db`) |
+
+<a id="bulk-pass-vs-watch-resolution-and-cost"></a>
+
+### Bulk pass vs `watch`: resolution and cost
+
+The workload shape changes sharply after the first full library run:
+
+| Phase | Command | What runs | Typical load |
+| --- | --- | --- | --- |
+| **Initial backfill** | `process` or `process --force` | Every photo in Shared Space / folder (often **thousands**) | Hours to overnight; GPU or cloud API busy continuously |
+| **Steady state** | `watch` (or `process` without `--force`) | **`Browse.RecentlyAdded`** only — uploads since last poll | Usually **a handful per day/week**; load **drops off a cliff** |
+
+SQLite (`.state/processed.db`) and existing `ai-*` tags mean photos already handled are skipped, so **`watch` does not re-walk the full library**.
+
+**Local Ollama:** Slower settings on a one-time bulk pass — e.g. Run 3’s **`l`** thumbnails, **`VISION_MAX_EDGE=1024`**, **`USE_LOCATION_IN_PROMPT=true`** (~**9.7 h** vs Run 2’s ~**5.7 h** on ~10k photos) — are often acceptable because you pay that wall-clock cost **once**. After backfill, `watch` with the same `.env` barely touches the GPU: a few new photos every few minutes, not another overnight job. You can even use **higher quality for `process --force`** and keep **`sm`** / **`512`** for daily `watch` by swapping `.env` or using separate compose profiles — only new uploads use the watch profile.
+
+**Cloud APIs:** The same resolution knobs multiply **per-image token cost**. A **`m`** / **`768`** bulk pass on ~10k photos might land in the **~$5–40** band (see [Cloud inference cost](README.md#cloud-inference-cost-typical)); **`l`** / **`1024`** can push toward the **high end** of that range or beyond, depending on provider image-token rules. **`watch`** afterward costs almost nothing in comparison (cents per month for typical upload rates). For cloud, prefer **moderate sizes on the full pass** unless you have budget for maximum quality on every historical photo; local Ollama has no per-token penalty, only time and electricity.
+
+**Practical pattern:**
+
+1. **First run** — `process --force` with quality settings you can afford (time for local GPU, dollars for cloud).
+2. **Ongoing** — `watch` with default or the same settings; steady-state load stays low either way.
+3. **Re-tag after a model change** — another full `--force` pass; treat it like step 1 again.
 
 ### Re-tagging after a model change
 
@@ -679,8 +702,8 @@ The companion app requests **one photo at a time** (thumbnail in, tags out).
 Rough ballparks with `llava-llama3` on a mid-range GPU:
 
 - **~3–15+ seconds per photo** depending on GPU load, thumbnail size, JSON vs fallback paths, and concurrent jobs on the same GPU
-- **Thousands of photos** → plan for **many hours to overnight** for a full `process` run
-- **`watch`** with a long `WATCH_INTERVAL_SECONDS` spreads load for new uploads
+- **Thousands of photos** → plan for **many hours to overnight** for a full `process` run (see [Bulk pass vs watch](README.md#bulk-pass-vs-watch-resolution-and-cost))
+- **`watch`** polls **Recently Added** only — after backfill, load is **orders of magnitude lower** than a full pass; higher `SYNOLOGY_THUMBNAIL_SIZE` / `VISION_MAX_EDGE` matter far less day-to-day
 
 If the same Ollama instance serves chat, coding assistants, or other models, expect **queues and slower tagging** when the GPU is busy. The app skips failed photos without marking them done, so you can re-run `process` later; it does not yet implement long backoffs for an overloaded server.
 
@@ -863,7 +886,7 @@ docker compose run --rm synology-photos-ai watch --once
 6. Creates tags via `Browse.GeneralTag.create` and attaches them with `Browse.Item.add_tag`
 7. Records processed photo IDs in SQLite to avoid duplicate work
 
-The `watch` command uses `Browse.RecentlyAdded` instead of scanning the full library.
+The `watch` command uses `Browse.RecentlyAdded` instead of scanning the full library — see [Bulk pass vs watch](README.md#bulk-pass-vs-watch-resolution-and-cost).
 
 ## API reference
 
