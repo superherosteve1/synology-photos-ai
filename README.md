@@ -55,11 +55,11 @@ One full **`process --force`** pass on a **Shared Space** library (May 2026). [E
 
 | Metric | Result |
 | --- | --- |
-| **Wall time** | ~14 hours (07:51 → 21:48 UTC) |
-| **Throughput** | ~**735 photos/hour** (~**5 s/photo** end-to-end, NAS + vision + writes) |
-| **Tags** | **100%** received tags; **~11.9** tags/photo avg (**98.7%** at the 12-tag cap) |
-| **Descriptions** | **100%** written (avg ~300 characters) |
-| **File mix** | ~**58%** JPG/JPEG, ~**42%** NEF; ~**2,300** basename pairs tagged as **both** RAW + JPEG |
+| **Wall time** | ≈14 hours (07:51 → 21:48 UTC) |
+| **Throughput** | ≈**735 photos/hour** (≈**5 s/photo** end-to-end, NAS + vision + writes) |
+| **Tags** | **100%** received tags; **≈11.9** tags/photo avg (**98.7%** at the 12-tag cap) |
+| **Descriptions** | **100%** written (avg ≈300 characters) |
+| **File mix** | ≈**58%** JPG/JPEG, ≈**42%** NEF; ≈**2,300** basename pairs tagged as **both** RAW + JPEG |
 | **JSON reliability** | Frequent **non-JSON** replies → second vision call or word-split fallbacks; many `ai-has` / `ai-moment` tags |
 
 **`.env` settings:** `SYNOLOGY_THUMBNAIL_SIZE=m`, `VISION_MAX_EDGE=768`, `OPENAI_MAX_TOKENS=384`, `TAG_PREFIX=ai`, `WRITE_DESCRIPTION=true`.
@@ -79,11 +79,11 @@ Re-tagged the same library with **`OPENAI_MODEL=gemma3`** on the **RTX PRO 4500*
 | Metric | Result |
 | --- | --- |
 | **Photos** | **10,260** processed (**2** failed of 10,262 scanned) |
-| **Wall time** | ~**5 h 40 min** (22:18 → 03:59 UTC, May 29–30) |
-| **Throughput** | ~**1,810 photos/hour** (~**2 s/photo** end-to-end, NAS + vision + writes) |
-| **Tags** | **100%** received tags; **~9.3** tags/photo avg (**25%** at the 12-tag cap) |
-| **Descriptions** | **100%** written (avg ~**116** characters) |
-| **File mix** | ~**58%** JPG/JPEG, ~**42%** NEF; ~**2,300** basename pairs as **both** RAW + JPEG |
+| **Wall time** | ≈**5 h 40 min** (22:18 → 03:59 UTC, May 29–30) |
+| **Throughput** | ≈**1,810 photos/hour** (≈**2 s/photo** end-to-end, NAS + vision + writes) |
+| **Tags** | **100%** received tags; **≈9.3** tags/photo avg (**25%** at the 12-tag cap) |
+| **Descriptions** | **100%** written (avg ≈**116** characters) |
+| **File mix** | ≈**58%** JPG/JPEG, ≈**42%** NEF; ≈**2,300** basename pairs as **both** RAW + JPEG |
 | **JSON reliability** | **No non-JSON / fallback paths** observed — structured JSON on first call |
 | **Quality** | **0** `ai-has` / `ai-moment` junk tags; **0** poetic filler (`serene`, `tranquil`, …) in descriptions |
 
@@ -93,10 +93,10 @@ Re-tagged the same library with **`OPENAI_MODEL=gemma3`** on the **RTX PRO 4500*
 
 | | Run 1 `llava-llama3` | Run 2 `gemma3` |
 | --- | --- | --- |
-| **Wall time** | ~14 h | ~**5.7 h** (~**2.5× faster**) |
-| **Throughput** | ~735/h (~5 s/photo) | ~**1,810/h** (~**2 s/photo**) |
-| **Avg tags** | ~11.9 (99% at cap) | ~9.3 (25% at cap) |
-| **Avg description** | ~300 chars | ~116 chars (factual) |
+| **Wall time** | ≈14 h | ≈**5.7 h** (≈**2.5× faster**) |
+| **Throughput** | ≈735/h (≈5 s/photo) | ≈**1,810/h** (≈**2 s/photo**) |
+| **Avg tags** | ≈11.9 (99% at cap) | ≈9.3 (25% at cap) |
+| **Avg description** | ≈300 chars | ≈116 chars (factual) |
 | **Location naming** | Often guessed; Gdańsk sometimes correct, sometimes Warsaw/Riga/Sofia | Rarely guesses; generic unless landmark obvious — see **`USE_LOCATION_IN_PROMPT`** |
 
 **Recommendation:** **`gemma3`** is the preferred default for this project — faster, reliable JSON, cleaner tags, no poetic filler. Enable **`USE_LOCATION_IN_PROMPT=true`** to add city/country from EXIF GPS when Synology geocoding is available.
@@ -112,8 +112,8 @@ While the full library pass continued on the **4500** (`:11434`), a separate Oll
 | Metric | [RTX PRO 4500](https://www.nvidia.com/en-us/products/workstations/professional-desktop-gpus/rtx-pro-4500/) (`:11434`) | [GeForce RTX 5070 Ti](https://www.nvidia.com/en-us/geforce/graphics-cards/50-series/rtx-5070-family/) (`:11435`) |
 | --- | --- | --- |
 | **Test** | Full library `--force` (**complete** — 10,260 photos) | `process --force --limit 20` |
-| **Vision latency** | ~**0.7–1.0 s/photo** (vision only) | ~**1.5–2 s/photo** end-to-end (NAS + vision + writes, concurrent with 4500 run) |
-| **`gemma3` VRAM** | ~**6.8 GB** loaded (shared with Whisper on same GPU) | ~**4 GB** loaded; **~12 GB** headroom on 16 GB |
+| **Vision latency** | ≈**0.7–1.0 s/photo** (vision only) | ≈**1.5–2 s/photo** end-to-end (NAS + vision + writes, concurrent with 4500 run) |
+| **`gemma3` VRAM** | ≈**6.8 GB** loaded (shared with Whisper on same GPU) | ≈**4 GB** loaded; **≈12 GB** headroom on 16 GB |
 | **JSON / quality** | Reliable JSON, clean tags | Same — no fallbacks; sensible noun tags |
 | **Result** | — | **20 / 20** processed, **0** failed |
 
@@ -134,11 +134,11 @@ Third full **`process --force`** on the same Shared Space library, with **newer 
 | Metric | Result |
 | --- | --- |
 | **Photos** | **10,258** processed (**2** failed of 10,260 scanned) |
-| **Wall time** | ~**9 h 43 min** (22:23 → 08:06 UTC, May 29–30) |
-| **Throughput** | ~**1,056 photos/hour** (~**3.4 s/photo** end-to-end, NAS + vision + writes) |
-| **Vision only** | ~**0.7–0.9 s/photo** in logs (same ballpark as Run 2) |
-| **Tags** | **100%** received tags; **~8.5** tags/photo avg (**9.5%** at the 12-tag cap) |
-| **Descriptions** | **100%** written (avg ~**136** characters) |
+| **Wall time** | ≈**9 h 43 min** (22:23 → 08:06 UTC, May 29–30) |
+| **Throughput** | ≈**1,056 photos/hour** (≈**3.4 s/photo** end-to-end, NAS + vision + writes) |
+| **Vision only** | ≈**0.7–0.9 s/photo** in logs (same ballpark as Run 2) |
+| **Tags** | **100%** received tags; **≈8.5** tags/photo avg (**9.5%** at the 12-tag cap) |
+| **Descriptions** | **100%** written (avg ≈**136** characters) |
 | **JSON / quality** | **0** `ai-has` / `ai-moment` junk tags; structured JSON on first call |
 
 **`.env` settings (vs Run 2):**
@@ -156,30 +156,30 @@ Third full **`process --force`** on the same Shared Space library, with **newer 
 
 | | Run 2 (4500, `m`/768) | Run 3 (5070 Ti, `l`/1024 + location) |
 | --- | --- | --- |
-| **Wall time** | ~**5.7 h** | ~**9.7 h** (~**1.7× longer**) |
-| **Throughput** | ~1,810/h (~2 s/photo) | ~1,056/h (~3.4 s/photo) |
-| **Avg tags** | ~9.3 | ~8.5 |
-| **Avg description** | ~116 chars | ~136 chars |
+| **Wall time** | ≈**5.7 h** | ≈**9.7 h** (≈**1.7× longer**) |
+| **Throughput** | ≈1,810/h (≈2 s/photo) | ≈1,056/h (≈3.4 s/photo) |
+| **Avg tags** | ≈9.3 | ≈8.5 |
+| **Avg description** | ≈116 chars | ≈136 chars |
 | **Location in captions** | Generic unless obvious | City/country from Synology geocoding when GPS exists |
 
-**Takeaway:** Larger NAS thumbnails + **`VISION_MAX_EDGE=1024`** and **`USE_LOCATION_IN_PROMPT=true`** cost wall-clock time vs Run 2, but vision inference alone stayed ~sub-second per photo in logs — most of the delta is download/resize and NAS writes. That extra time is mostly a **one-time** cost on a full `process --force` pass; after that, [`watch`](README.md#bulk-pass-vs-watch-resolution-and-cost) only handles new uploads (see [Bulk pass vs watch](README.md#bulk-pass-vs-watch-resolution-and-cost)).
+**Takeaway:** Larger NAS thumbnails + **`VISION_MAX_EDGE=1024`** and **`USE_LOCATION_IN_PROMPT=true`** cost wall-clock time vs Run 2, but vision inference alone stayed sub-second per photo in logs — most of the delta is download/resize and NAS writes. That extra time is mostly a **one-time** cost on a full `process --force` pass; after that, [watch](README.md#bulk-pass-vs-watch-resolution-and-cost) only handles new uploads (see [Bulk pass vs watch](README.md#bulk-pass-vs-watch-resolution-and-cost)).
 
 
 ### What worked well
 
 - Both full library passes completed with minimal intervention; tags and descriptions show in Photos and **search** (see [Examples](README.md#examples)).
-- Run 2 (`gemma3`) finished in ~**5.7 h** vs ~14 h for Run 1 — ~**2.5× faster** with cleaner metadata.
-- Run 3 validated **`gemma3`** on the **5070 Ti** for a full library pass with **`USE_LOCATION_IN_PROMPT`** and larger thumbnails — ~**9.7 h**, same JSON quality as Run 2 (see [Run 3](README.md#run-3-gemma3-complete)).
+- Run 2 (`gemma3`) finished in ≈**5.7 h** vs ≈14 h for Run 1 — ≈**2.5× faster** with cleaner metadata.
+- Run 3 validated **`gemma3`** on the **5070 Ti** for a full library pass with **`USE_LOCATION_IN_PROMPT`** and larger thumbnails — ≈**9.7 h**, same JSON quality as Run 2 (see [Run 3](README.md#run-3-gemma3-complete)).
 - Local Ollama kept thumbnails on the LAN; NAS API writes (tags + EXIF description) were stable after description-before-tags ordering.
 
 ### Room for improvement (Run 1; addressed in Run 2 testing)
 
 | Issue | Approx. impact (Run 1) | Mitigation |
 | --- | --- | --- |
-| Poetic filler (`serene`, `moment of tranquility`, …) | ~**30%** of descriptions | Stricter prompts + post-processing; re-tag with `--force` |
+| Poetic filler (`serene`, `moment of tranquility`, …) | ≈**30%** of descriptions | Stricter prompts + post-processing; re-tag with `--force` |
 | Word-split fallback tags (`ai-has`, `ai-moment`, …) when JSON fails | Common on `llava-llama3` | Use a JSON-reliable model such as **`gemma3`**, or JSON retry + tag blocklist |
 | Wrong city/landmark guesses | Small but noticeable on travel/architecture (Run 1) | **`gemma3`** avoids guessing; enable **`USE_LOCATION_IN_PROMPT=true`** for EXIF-based city/country |
-| **JPG + NEF duplicates** | ~2× API calls for many scenes (Run 1) | Default **`REUSE_JPEG_ANALYSIS_FOR_RAW=true`** — vision on JPEG only, same metadata written to NEF |
+| **JPG + NEF duplicates** | ≈2× API calls for many scenes (Run 1) | Default **`REUSE_JPEG_ANALYSIS_FOR_RAW=true`** — vision on JPEG only, same metadata written to NEF |
 | GPU contention (ComfyUI, Whisper, …) | Variable latency | [Dual GPU Ollama](README.md#dual-gpu-ollama-two-instances-one-machine) — second instance on the other card; or pause other VRAM jobs |
 
 For ballpark planning on other hardware, see [Throughput and sharing the GPU](README.md#throughput-and-sharing-the-gpu).
@@ -229,24 +229,24 @@ What this app sends for analysis is a **downscaled thumbnail** from Synology Pho
 
 ### Cloud inference cost (typical)
 
-Cloud vision APIs bill **per token**, not per photo. This app sends a **downscaled Synology thumbnail** plus a short prompt and requests ~**250–400 tokens** of JSON (description + tags) — much cheaper than full-resolution analysis, but a **10k library still adds up**.
+Cloud vision APIs bill **per token**, not per photo. This app sends a **downscaled Synology thumbnail** plus a short prompt and requests ≈**250–400 tokens** of JSON (description + tags) — much cheaper than full-resolution analysis, but a **10k library still adds up**.
 
 **Per photo (one describe + tag call):**
 
 | Provider / model | Pricing (approx.) | Per photo | Notes |
 | --- | --- | --- | --- |
-| **[GPT-4o mini](https://developers.openai.com/api/docs/models/gpt-4o-mini)** | $0.15 / M input, $0.60 / M output | **~$0.0005–0.004** | Images become tokens; gpt-4o-mini can have a **high fixed image token cost** on some resolutions |
-| **[GPT-4o](https://openai.com/api/pricing)** | ~$2.50 / M input, ~$10 / M output | **~$0.002–0.015** | Higher quality; more image tokens at larger thumbnail sizes |
-| **[Gemini 2.5 Flash-Lite](https://ai.google.dev/gemini-api/docs/pricing)** | $0.10 / M input, $0.40 / M output | **~$0.0003–0.002** | Often among the cheapest cloud vision options; OpenAI-compatible endpoint supported |
-| **[Gemini 2.5 Flash](https://ai.google.dev/gemini-api/docs/pricing)** | $0.30 / M input, $2.50 / M output | **~$0.001–0.008** | Better quality, higher cost |
-| **Local Ollama (`gemma3`)** | No API fee | **~$0** | Electricity + hardware; see [Run 2](README.md#run-2-gemma3-complete) (~5.7 h for ~10k photos) |
+| **[GPT-4o mini](https://developers.openai.com/api/docs/models/gpt-4o-mini)** | $0.15 / M input, $0.60 / M output | **≈$0.0005–0.004** | Images become tokens; gpt-4o-mini can have a **high fixed image token cost** on some resolutions |
+| **[GPT-4o](https://openai.com/api/pricing)** | ≈$2.50 / M input, ≈$10 / M output | **≈$0.002–0.015** | Higher quality; more image tokens at larger thumbnail sizes |
+| **[Gemini 2.5 Flash-Lite](https://ai.google.dev/gemini-api/docs/pricing)** | $0.10 / M input, $0.40 / M output | **≈$0.0003–0.002** | Often among the cheapest cloud vision options; OpenAI-compatible endpoint supported |
+| **[Gemini 2.5 Flash](https://ai.google.dev/gemini-api/docs/pricing)** | $0.30 / M input, $2.50 / M output | **≈$0.001–0.008** | Better quality, higher cost |
+| **Local Ollama (`gemma3`)** | No API fee | **≈$0** | Electricity + hardware; see [Run 2](README.md#run-2-gemma3-complete) (≈5.7 h for ≈10k photos) |
 
-**Full library ballpark (~10,000 photos):**
+**Full library ballpark (≈10,000 photos):**
 
 | Tier | Estimated total |
 | --- | --- |
-| Budget cloud (Gemini Flash-Lite, gpt-4o-mini) | **~$5–40** |
-| Mid cloud (gpt-4o, Gemini Flash) | **~$25–150** |
+| Budget cloud (Gemini Flash-Lite, gpt-4o-mini) | **≈$5–40** |
+| Mid cloud (gpt-4o, Gemini Flash) | **≈$25–150** |
 | Local Ollama | **$0 API** (your GPU + power) |
 
 Actual cloud cost depends on **`SYNOLOGY_THUMBNAIL_SIZE`**, **`VISION_MAX_EDGE`**, **`OPENAI_MAX_TOKENS`**, and provider image-token rules. With **`REUSE_JPEG_ANALYSIS_FOR_RAW=true`**, you pay for **one vision call per scene**, not separate JPG + NEF calls. **`PROCESS_PARALLEL=2`** (or higher) can shorten wall-clock time on cloud endpoints without changing per-photo cost. **Resolution hits cost hardest on the initial full-library pass** — ongoing `watch` traffic is tiny by comparison; see [Bulk pass vs watch](README.md#bulk-pass-vs-watch-resolution-and-cost).
@@ -330,7 +330,7 @@ See [Docker](README.md#docker) for networking details.
 | `SYNOLOGY_PHOTOS_ALIAS` | Custom URL alias for Synology Photos (default `photo`). Set **empty** if Photos is only opened via DSM (`?launchApp=SYNO.Foto…`) and `/photo/webapi` returns HTTP 403 — the app will use `/webapi/entry.cgi` on port 5001 instead. |
 | `SYNOLOGY_USERNAME` / `SYNOLOGY_PASSWORD` | DSM account for API login — see [DSM service account](README.md#dsm-service-account-2fa--shared-space). Quote the password if it contains `#` with a space before it. |
 | `SYNOLOGY_SPACE` | `personal` (logged-in user’s Photos tab) or `shared` ([Shared Space](README.md#shared-space-library) — typical for a service account) |
-| `SYNOLOGY_THUMBNAIL_SIZE` | NAS thumbnail: `sm` (default, ~360px), `m`, `l`, or `xl`. Larger sizes slow bulk runs but matter little for [`watch`](README.md#bulk-pass-vs-watch-resolution-and-cost) — see [Bulk pass vs watch](README.md#bulk-pass-vs-watch-resolution-and-cost) |
+| `SYNOLOGY_THUMBNAIL_SIZE` | NAS thumbnail: `sm` (default, ≈360px), `m`, `l`, or `xl`. Larger sizes slow bulk runs but matter little for [watch](README.md#bulk-pass-vs-watch-resolution-and-cost) — see [Bulk pass vs watch](README.md#bulk-pass-vs-watch-resolution-and-cost) |
 | `VISION_MAX_EDGE` | Resize before vision API (default `512` px longest edge; `0` = off). Higher values improve detail on the **first** full pass; same tradeoff for [cloud cost](README.md#cloud-inference-cost-typical) |
 | `SYNOLOGY_VERIFY_SSL` | Set `true` if using a valid TLS cert |
 | `OPENAI_API_BASE` | Vision API base URL (must end with `/v1`). See [OpenAI-compatible endpoints](README.md#openai-compatible-endpoints), [Ollama](README.md#direct-ollama), or [Open WebUI](README.md#open-webui-ollama-proxy). Leave empty for native OpenAI cloud. |
@@ -339,7 +339,7 @@ See [Docker](README.md#docker) for networking details.
 | `OPENAI_MAX_TOKENS` | Max completion tokens per photo (default `256`). With Ollama this is `num_predict`. Lower = faster; retries use a smaller cap |
 | `OPENAI_TEMPERATURE` | Vision sampling temperature (default `0.1`). With Ollama passed in `options.temperature`. Use `0` with a fixed seed for max reproducibility |
 | `OPENAI_SEED` | Optional fixed seed for Ollama/OpenAI (omit for random). Same seed + same thumbnail → same output; does not help if JPG and NEF thumbnails differ |
-| `REUSE_JPEG_ANALYSIS_FOR_RAW` | When `true` (default), run vision once on JPEG/HEIC/etc. and **copy** description + tags to matching RAW/NEF (same basename). Saves ~half the vision calls on RAW+JPEG libraries |
+| `REUSE_JPEG_ANALYSIS_FOR_RAW` | When `true` (default), run vision once on JPEG/HEIC/etc. and **copy** description + tags to matching RAW/NEF (same basename). Saves ≈half the vision calls on RAW+JPEG libraries |
 | `USE_LOCATION_IN_PROMPT` | When `true`, include Synology **address** (city, country, landmark from EXIF GPS) in the vision prompt — factual place names without vision guessing. Default **`false`**. Falls back to coordinates only if geocoding is missing |
 | `PROCESS_PARALLEL` | Concurrent **vision** calls (download + analyze; default **`1`**). Synology writes (description, tags, SQLite) stay **sequential**. Local Ollama: keep `1` unless you raised `OLLAMA_NUM_PARALLEL`. Cloud APIs: try **`2`–`4`** to hide latency |
 | `TAG_PREFIX` | Prefix for generated tags (default `ai`, e.g. `ai-beach`) |
@@ -362,9 +362,9 @@ The workload shape changes sharply after the first full library run:
 
 SQLite (`.state/processed.db`) and existing `ai-*` tags mean photos already handled are skipped, so **`watch` does not re-walk the full library**.
 
-**Local Ollama:** Slower settings on a one-time bulk pass — e.g. Run 3’s **`l`** thumbnails, **`VISION_MAX_EDGE=1024`**, **`USE_LOCATION_IN_PROMPT=true`** (~**9.7 h** vs Run 2’s ~**5.7 h** on ~10k photos) — are often acceptable because you pay that wall-clock cost **once**. After backfill, `watch` with the same `.env` barely touches the GPU: a few new photos every few minutes, not another overnight job. You can even use **higher quality for `process --force`** and keep **`sm`** / **`512`** for daily `watch` by swapping `.env` or using separate compose profiles — only new uploads use the watch profile.
+**Local Ollama:** Slower settings on a one-time bulk pass — e.g. Run 3’s **`l`** thumbnails, **`VISION_MAX_EDGE=1024`**, **`USE_LOCATION_IN_PROMPT=true`** (≈**9.7 h** vs Run 2’s ≈**5.7 h** on ≈10k photos) — are often acceptable because you pay that wall-clock cost **once**. After backfill, `watch` with the same `.env` barely touches the GPU: a few new photos every few minutes, not another overnight job. You can even use **higher quality for `process --force`** and keep **`sm`** / **`512`** for daily `watch` by swapping `.env` or using separate compose profiles — only new uploads use the watch profile.
 
-**Cloud APIs:** The same resolution knobs multiply **per-image token cost**. A **`m`** / **`768`** bulk pass on ~10k photos might land in the **~$5–40** band (see [Cloud inference cost](README.md#cloud-inference-cost-typical)); **`l`** / **`1024`** can push toward the **high end** of that range or beyond, depending on provider image-token rules. **`watch`** afterward costs almost nothing in comparison (cents per month for typical upload rates). For cloud, prefer **moderate sizes on the full pass** unless you have budget for maximum quality on every historical photo; local Ollama has no per-token penalty, only time and electricity.
+**Cloud APIs:** The same resolution knobs multiply **per-image token cost**. A **`m`** / **`768`** bulk pass on ≈10k photos might land in the **≈$5–40** band (see [Cloud inference cost](README.md#cloud-inference-cost-typical)); **`l`** / **`1024`** can push toward the **high end** of that range or beyond, depending on provider image-token rules. **`watch`** afterward costs almost nothing in comparison (cents per month for typical upload rates). For cloud, prefer **moderate sizes on the full pass** unless you have budget for maximum quality on every historical photo; local Ollama has no per-token penalty, only time and electricity.
 
 **Practical pattern:**
 
@@ -655,10 +655,10 @@ You need a model that accepts images. **`gemma3`** and **`llava-llama3`** are go
 
 | Model | Speed (typical) | Quality |
 | --- | --- | --- |
-| **`gemma3`** | **~2 s/photo** end-to-end on a strong GPU ([reference run](README.md#run-2-gemma3-complete)) | **Recommended default** — reliable JSON, clean noun tags, factual captions |
-| **`llava-llama3`** | **~3–15+ s/photo** with retries/fallbacks on some hosts | Good captions when JSON works; on some setups often returns **non-JSON** (word-split tags, poetic filler) |
-| `bakllava` | **~0.3–1 s/photo** — best for large libraries | One-line descriptions; tags guessed from words (not model JSON). May miscount or miss nuance |
-| `llama3.2-vision` | **~20–60+ s/photo** on a mid GPU | Similar role to `llava-llama3`; can be slower or pickier about JSON on some hosts |
+| **`gemma3`** | **≈2 s/photo** end-to-end on a strong GPU ([reference run](README.md#run-2-gemma3-complete)) | **Recommended default** — reliable JSON, clean noun tags, factual captions |
+| **`llava-llama3`** | **≈3–15+ s/photo** with retries/fallbacks on some hosts | Good captions when JSON works; on some setups often returns **non-JSON** (word-split tags, poetic filler) |
+| `bakllava` | **≈0.3–1 s/photo** — best for large libraries | One-line descriptions; tags guessed from words (not model JSON). May miscount or miss nuance |
+| `llama3.2-vision` | **≈20–60+ s/photo** on a mid GPU | Similar role to `llava-llama3`; can be slower or pickier about JSON on some hosts |
 
 For **thousands of photos**, use `bakllava` for a first pass, or **`gemma3`** if JSON tags and speed both matter. Re-tag subsets with `--force` after changing models.
 
@@ -686,7 +686,7 @@ Vision models are much heavier than text-only chat. Requirements depend on model
 | **Apple Silicon** | **16 GB+ unified memory** (M-series Mac mini / Studio) | Common home-lab setup; Ollama uses unified RAM instead of VRAM. Prefer 24 GB+ if the Mac also runs heavy desktop apps |
 | **CPU only** | **16 GB+ system RAM**, fast CPU | Usable for tests (`--limit 5 --dry-run`); **not** practical for large libraries (often tens of seconds to minutes **per photo**) |
 
-Also plan **disk** on the inference host for model weights (often **~5–15 GB** per vision model) and a few GB of free RAM for the OS and Ollama outside VRAM.
+Also plan **disk** on the inference host for model weights (often **≈5–15 GB** per vision model) and a few GB of free RAM for the OS and Ollama outside VRAM.
 
 #### Throughput and sharing the GPU
 
@@ -694,14 +694,14 @@ The companion app requests **one photo at a time** (thumbnail in, tags out).
 
 | Run | Model | GPU | Throughput (typical) |
 | --- | --- | --- | --- |
-| Run 1 (full library) | `llava-llama3` | [RTX PRO 4500](https://www.nvidia.com/en-us/products/workstations/professional-desktop-gpus/rtx-pro-4500/) | ~**5 s/photo** end-to-end (~**735/hour**) — JSON retries and fallbacks |
-| Run 2 (full library) | `gemma3` | [RTX PRO 4500](https://www.nvidia.com/en-us/products/workstations/professional-desktop-gpus/rtx-pro-4500/) | ~**2 s/photo** end-to-end (~**1,810/hour**) — see [Run 2](README.md#run-2-gemma3-complete) |
-| Run 2b (20-photo test) | `gemma3` | [RTX 5070 Ti](https://www.nvidia.com/en-us/geforce/graphics-cards/50-series/rtx-5070-family/) (`:11435`) | ~**1.5–2 s/photo** end-to-end — see [Run 2b](README.md#run-2b-gemma3-on-rtx-5070-ti-20-photo-benchmark) |
-| Run 3 (full library) | `gemma3` | [RTX 5070 Ti](https://www.nvidia.com/en-us/geforce/graphics-cards/50-series/rtx-5070-family/) (`:11435`) | ~**3.4 s/photo** end-to-end (`l`/1024 + location) — see [Run 3](README.md#run-3-gemma3-complete) |
+| Run 1 (full library) | `llava-llama3` | [RTX PRO 4500](https://www.nvidia.com/en-us/products/workstations/professional-desktop-gpus/rtx-pro-4500/) | ≈**5 s/photo** end-to-end (≈**735/hour**) — JSON retries and fallbacks |
+| Run 2 (full library) | `gemma3` | [RTX PRO 4500](https://www.nvidia.com/en-us/products/workstations/professional-desktop-gpus/rtx-pro-4500/) | ≈**2 s/photo** end-to-end (≈**1,810/hour**) — see [Run 2](README.md#run-2-gemma3-complete) |
+| Run 2b (20-photo test) | `gemma3` | [RTX 5070 Ti](https://www.nvidia.com/en-us/geforce/graphics-cards/50-series/rtx-5070-family/) (`:11435`) | ≈**1.5–2 s/photo** end-to-end — see [Run 2b](README.md#run-2b-gemma3-on-rtx-5070-ti-20-photo-benchmark) |
+| Run 3 (full library) | `gemma3` | [RTX 5070 Ti](https://www.nvidia.com/en-us/geforce/graphics-cards/50-series/rtx-5070-family/) (`:11435`) | ≈**3.4 s/photo** end-to-end (`l`/1024 + location) — see [Run 3](README.md#run-3-gemma3-complete) |
 
 Rough ballparks with `llava-llama3` on a mid-range GPU:
 
-- **~3–15+ seconds per photo** depending on GPU load, thumbnail size, JSON vs fallback paths, and concurrent jobs on the same GPU
+- **≈3–15+ seconds per photo** depending on GPU load, thumbnail size, JSON vs fallback paths, and concurrent jobs on the same GPU
 - **Thousands of photos** → plan for **many hours to overnight** for a full `process` run (see [Bulk pass vs watch](README.md#bulk-pass-vs-watch-resolution-and-cost))
 - **`watch`** polls **Recently Added** only — after backfill, load is **orders of magnitude lower** than a full pass; higher `SYNOLOGY_THUMBNAIL_SIZE` / `VISION_MAX_EDGE` matter far less day-to-day
 
