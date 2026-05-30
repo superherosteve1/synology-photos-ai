@@ -1,6 +1,10 @@
 services:
   synology-photos-ai:
-    build: .
+    build:
+      context: .
+      # Synology Container Manager: bridge builds often have no DNS (Errno -3).
+      # Use host network during build so pip can reach PyPI.
+      network: host
     env_file: .env
     environment:
       STATE_PATH: /data/processed.db
@@ -11,6 +15,10 @@ services:
       - synology-photos-ai-state:/data
     restart: unless-stopped
     command: ["watch"]
+    # If the running container cannot resolve names (uncommon when using LAN IPs in .env):
+    # dns:
+    #   - 8.8.8.8
+    #   - 1.1.1.1
     # Uncomment if Ollama runs on the Docker host (Mac/Windows Docker Desktop):
     # extra_hosts:
     #   - "host.docker.internal:host-gateway"

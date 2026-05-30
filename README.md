@@ -841,6 +841,30 @@ Store the project under a shared folder (e.g. `/volume1/docker/synology-photos-a
 4. Set the path to the project folder and deploy.
 5. Check **Container → Logs** for `watch` output.
 
+**Running commands with arguments (NAS)**
+
+The Dockerfile entrypoint is `synology-photos-ai`. Everything after that on the command line is passed as **arguments** to the CLI — same as on your Mac Studio.
+
+| Goal | SSH (in the project folder) |
+| --- | --- |
+| Test NAS login | `docker compose run --rm synology-photos-ai ping` |
+| Dry-run 5 photos | `docker compose run --rm synology-photos-ai process --limit 5 --dry-run` |
+| Batch tag (skip already done) | `docker compose run --rm synology-photos-ai process --limit 100` |
+| Full re-tag | `docker compose run --rm synology-photos-ai process --force` |
+| One watch cycle (then exit) | `docker compose run --rm synology-photos-ai watch --once` |
+| Local SQLite summary | `docker compose run --rm synology-photos-ai status` |
+| Help | `docker compose run --rm synology-photos-ai --help` |
+
+Use **`docker compose run --rm`** for one-shot jobs — it uses the same `.env` and **`synology-photos-ai-state`** volume as the background `watch` container, so SQLite state is shared.
+
+**Container Manager GUI:** the long-running project container is started with command **`watch`**. To run something else:
+
+1. **SSH** (above) — simplest and matches the docs.
+2. **Duplicate container** — **Container →** select the image → **Create** → set **Command** to e.g. `process --limit 10 --dry-run` (leave entrypoint as default `synology-photos-ai`), same env file and mount `/data` from volume `synology-photos-ai-state`, run once, then delete.
+3. **Do not** run two **`process --force`** jobs at once (shared SQLite + NAS writes).
+
+Background **`watch`** keeps running while you **`docker compose run`** batch commands — that is fine.
+
 **Persistence on Synology**
 
 The compose file uses a named volume (`synology-photos-ai-state`). To store state on a host folder instead, replace the volume in `docker-compose.yml`:
@@ -856,6 +880,56 @@ volumes:
 - **Photos API from container → NAS**: Using the NAS LAN IP for `SYNOLOGY_HOST` avoids loopback issues inside Docker's bridge network.
 - **Container → GPU machine**: The NAS container must reach `OPENAI_API_BASE` over LAN — ensure firewall rules allow the NAS to reach port `11434` (Ollama) or your Open WebUI port.
 - **Do not run Ollama in NAS Docker for vision**: Most Synology NAS units lack a suitable GPU; use your external VRAM host instead.
+
+**Build fails at `pip install` / “Temporary failure in name resolution”**
+
+Your log shows **`[Errno -3] Temporary failure in name resolution`** when pip tries to fetch **`hatchling`** from PyPI. The build container has **no working DNS** — not a problem with this project’s code.
+
+**Fix 1 — use host network during build (recommended)**
+
+Pull the latest repo (updated `docker-compose.yml` sets `build.network: host`), then rebuild **without cache**:
+
+```bash
+cd /volume1/docker/synology-photos-ai
+docker compose build --no-cache
+```
+
+**Fix 2 — DSM DNS**
+
+**Control Panel → Network → General → DNS Server** — set working resolvers (e.g. your router, `8.8.8.8`, or `1.1.1.1`). From SSH on the NAS:
+
+```bash
+curl -I https://pypi.org          # must succeed on the NAS itself
+nslookup pypi.org                 # must return an address
+```
+
+**Fix 3 — build on your Mac Studio, load on the NAS**
+
+Avoids PyPI entirely during the NAS build (same x86_64 as RS1221+):
+
+```bash
+# On Mac Studio (in the project folder)
+docker build -t synology-photos-ai:latest .
+docker save synology-photos-ai:latest | gzip > synology-photos-ai.tar.gz
+scp synology-photos-ai.tar.gz admin@<nas-ip>:/volume1/docker/
+
+# On NAS (SSH)
+gunzip -c /volume1/docker/synology-photos-ai.tar.gz | docker load
+```
+
+In Container Manager, create the project using `docker-compose.yml` but **disable “Build”** / set **image: synology-photos-ai:latest** instead of `build: .` if the GUI keeps trying to rebuild.
+
+**Note:** The log you pasted is still the **old** Dockerfile (`RUN pip install .` only). After syncing the repo, step 6 should show multiple `pip install` lines (hatchling + deps, then `--no-build-isolation`). You still need DNS (or Fix 3) for any on-NAS build that hits PyPI.
+
+**Build fails at `pip install` / other errors**
+
+Container Manager must reach **PyPI** during `docker compose build` unless you use Fix 3. The Dockerfile pre-installs wheels with **`--no-build-isolation`** to skip the fragile PEP 517 isolation step.
+
+If step 6 still fails after DNS is fixed:
+
+1. **Full build log** — `docker compose build --no-cache --progress=plain 2>&1 | tee build.log`
+2. **Timeout** — latest Dockerfile sets `PIP_DEFAULT_TIMEOUT=120`
+3. **Out of memory** — close other containers during build; RS1221+ with 32 GB should be fine
 
 ### `OPENAI_API_BASE` from inside the container
 
