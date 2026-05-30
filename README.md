@@ -97,7 +97,7 @@ Re-tagged the same library with **`OPENAI_MODEL=gemma3`** on the **RTX PRO 4500*
 | **Throughput** | ~735/h (~5 s/photo) | ~**1,810/h** (~**2 s/photo**) |
 | **Avg tags** | ~11.9 (99% at cap) | ~9.3 (25% at cap) |
 | **Avg description** | ~300 chars | ~116 chars (factual) |
-| **Location naming** | Often guessed; Gdańsk sometimes correct, sometimes Warsaw/Belgium | Rarely guesses; generic unless landmark obvious — see **`USE_LOCATION_IN_PROMPT`** |
+| **Location naming** | Often guessed; Gdańsk sometimes correct, sometimes Warsaw/Riga/Sofia | Rarely guesses; generic unless landmark obvious — see **`USE_LOCATION_IN_PROMPT`** |
 
 **Recommendation:** **`gemma3`** is the preferred default for this project — faster, reliable JSON, cleaner tags, no poetic filler. Enable **`USE_LOCATION_IN_PROMPT=true`** to add city/country from EXIF GPS when Synology geocoding is available.
 
