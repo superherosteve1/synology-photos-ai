@@ -49,6 +49,31 @@ class Settings(BaseSettings):
         le=8192,
         validation_alias="OPENAI_MAX_TOKENS",
     )
+    openai_temperature: float = Field(
+        default=0.1,
+        ge=0.0,
+        le=2.0,
+        validation_alias="OPENAI_TEMPERATURE",
+    )
+    openai_seed: int | None = Field(
+        default=None,
+        validation_alias="OPENAI_SEED",
+    )
+    reuse_jpeg_analysis_for_raw: bool = Field(
+        default=True,
+        validation_alias="REUSE_JPEG_ANALYSIS_FOR_RAW",
+    )
+    use_location_in_prompt: bool = Field(
+        default=False,
+        validation_alias="USE_LOCATION_IN_PROMPT",
+    )
+    # Concurrent vision API calls (download + analyze). NAS writes stay sequential.
+    process_parallel: int = Field(
+        default=1,
+        ge=1,
+        le=16,
+        validation_alias="PROCESS_PARALLEL",
+    )
 
     tag_prefix: str = Field(default="ai", validation_alias="TAG_PREFIX")
     max_tags: int = Field(default=12, ge=1, le=30, validation_alias="MAX_TAGS")

@@ -3,6 +3,8 @@ from __future__ import annotations
 import logging
 import mimetypes
 import time
+from collections import deque
+from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass
 
 from rich.console import Console
@@ -11,8 +13,15 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 from synology_photos_ai.ai.analyzer import PhotoAnalysis, PhotoAnalyzer
 from synology_photos_ai.ai.image_prep import prepare_for_vision
 from synology_photos_ai.config import Settings
+from synology_photos_ai.pipeline.filenames import (
+    file_stem,
+    is_raw,
+    is_raster,
+    processing_order_key,
+)
 from synology_photos_ai.store.state import ProcessState, StateStore
 from synology_photos_ai.synology.client import PhotoItem, SynologyPhotosClient
+from synology_photos_ai.synology.location import format_location_prompt
 
 logger = logging.getLogger(__name__)
 console = Console()
@@ -24,6 +33,12 @@ class ProcessStats:
     skipped: int = 0
     processed: int = 0
     failed: int = 0
+
+
+@dataclass
+class _PendingVision:
+    item: PhotoItem
+    future: Future[PhotoAnalysis]
 
 
 class PhotoProcessor:
@@ -46,16 +61,30 @@ class PhotoProcessor:
         force: bool = False,
         dry_run: bool = False,
     ) -> ProcessStats:
+        ordered = sorted(items, key=processing_order_key)
+        parallel = self._settings.process_parallel
+        if dry_run or parallel <= 1:
+            return self._process_items_sequential(ordered, force=force, dry_run=dry_run)
+        return self._process_items_parallel(ordered, force=force, parallel=parallel)
+
+    def _process_items_sequential(
+        self,
+        ordered: list[PhotoItem],
+        *,
+        force: bool,
+        dry_run: bool,
+    ) -> ProcessStats:
         stats = ProcessStats()
         tag_cache = {tag.name: tag.id for tag in self._client.list_tags()}
+        analysis_by_stem: dict[str, PhotoAnalysis] = {}
 
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
             console=console,
         ) as progress:
-            task = progress.add_task("Processing photos...", total=len(items))
-            for item in items:
+            task = progress.add_task("Processing photos...", total=len(ordered))
+            for item in ordered:
                 stats.scanned += 1
                 progress.update(task, advance=1, description=f"Photo {item.id}: {item.filename}")
 
@@ -64,15 +93,198 @@ class PhotoProcessor:
                     continue
 
                 try:
-                    self._process_one(
-                        item, tag_cache=tag_cache, dry_run=dry_run, force=force
+                    reused = self._reused_analysis_for_item(item, analysis_by_stem)
+                    result = self._process_one(
+                        item,
+                        tag_cache=tag_cache,
+                        dry_run=dry_run,
+                        force=force,
+                        reused_analysis=reused,
                     )
+                    if self._settings.reuse_jpeg_analysis_for_raw and is_raster(item.filename):
+                        analysis_by_stem[file_stem(item.filename)] = result.analysis
                     stats.processed += 1
                 except Exception:
                     stats.failed += 1
                     logger.exception("Failed to process photo %s (%s)", item.id, item.filename)
 
         return stats
+
+    def _process_items_parallel(
+        self,
+        ordered: list[PhotoItem],
+        *,
+        force: bool,
+        parallel: int,
+    ) -> ProcessStats:
+        stats = ProcessStats()
+        tag_cache = {tag.name: tag.id for tag in self._client.list_tags()}
+        analysis_by_stem: dict[str, PhotoAnalysis] = {}
+        pending: deque[_PendingVision] = deque()
+        in_flight_raster: dict[str, Future[PhotoAnalysis]] = {}
+
+        with ThreadPoolExecutor(max_workers=parallel) as executor:
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                console=console,
+            ) as progress:
+                task = progress.add_task("Processing photos...", total=len(ordered))
+                for item in ordered:
+                    stats.scanned += 1
+                    progress.update(
+                        task, advance=1, description=f"Photo {item.id}: {item.filename}"
+                    )
+
+                    if not self._should_process(item, force=force):
+                        stats.skipped += 1
+                        continue
+
+                    try:
+                        reused = self._reused_analysis_for_item(
+                            item,
+                            analysis_by_stem,
+                            in_flight_raster=in_flight_raster,
+                        )
+                        if reused is not None:
+                            while pending:
+                                entry = pending[0]
+                                try:
+                                    self._apply_pending_head(
+                                        pending,
+                                        in_flight_raster,
+                                        analysis_by_stem=analysis_by_stem,
+                                        tag_cache=tag_cache,
+                                        force=force,
+                                    )
+                                    stats.processed += 1
+                                except Exception:
+                                    stats.failed += 1
+                                    logger.exception(
+                                        "Failed to process photo %s (%s)",
+                                        entry.item.id,
+                                        entry.item.filename,
+                                    )
+                            self._apply_writes(
+                                item,
+                                reused,
+                                tag_cache=tag_cache,
+                                force=force,
+                                dry_run=False,
+                                reused_from=self._reuse_partner_name(item),
+                            )
+                            stats.processed += 1
+                            continue
+
+                        future = executor.submit(self._run_vision, item)
+                        stem = file_stem(item.filename)
+                        if is_raster(item.filename):
+                            in_flight_raster[stem] = future
+                        pending.append(_PendingVision(item=item, future=future))
+
+                        while len(pending) >= parallel:
+                            entry = pending[0]
+                            try:
+                                self._apply_pending_head(
+                                    pending,
+                                    in_flight_raster,
+                                    analysis_by_stem=analysis_by_stem,
+                                    tag_cache=tag_cache,
+                                    force=force,
+                                )
+                                stats.processed += 1
+                            except Exception:
+                                stats.failed += 1
+                                logger.exception(
+                                    "Failed to process photo %s (%s)",
+                                    entry.item.id,
+                                    entry.item.filename,
+                                )
+                    except Exception:
+                        stats.failed += 1
+                        logger.exception(
+                            "Failed to process photo %s (%s)", item.id, item.filename
+                        )
+
+                while pending:
+                    entry = pending[0]
+                    try:
+                        self._apply_pending_head(
+                            pending,
+                            in_flight_raster,
+                            analysis_by_stem=analysis_by_stem,
+                            tag_cache=tag_cache,
+                            force=force,
+                        )
+                        stats.processed += 1
+                    except Exception:
+                        stats.failed += 1
+                        logger.exception(
+                            "Failed to process photo %s (%s)",
+                            entry.item.id,
+                            entry.item.filename,
+                        )
+
+        return stats
+
+    def _apply_pending_head(
+        self,
+        pending: deque[_PendingVision],
+        in_flight_raster: dict[str, Future[PhotoAnalysis]],
+        *,
+        analysis_by_stem: dict[str, PhotoAnalysis],
+        tag_cache: dict[str, int],
+        force: bool,
+    ) -> None:
+        entry = pending[0]
+        try:
+            analysis = entry.future.result()
+        except Exception:
+            pending.popleft()
+            stem = file_stem(entry.item.filename)
+            if is_raster(entry.item.filename) and in_flight_raster.get(stem) is entry.future:
+                del in_flight_raster[stem]
+            raise
+
+        pending.popleft()
+        stem = file_stem(entry.item.filename)
+        if is_raster(entry.item.filename) and in_flight_raster.get(stem) is entry.future:
+            del in_flight_raster[stem]
+
+        result = self._apply_writes(
+            entry.item,
+            analysis,
+            tag_cache=tag_cache,
+            force=force,
+            dry_run=False,
+        )
+        if self._settings.reuse_jpeg_analysis_for_raw and is_raster(entry.item.filename):
+            analysis_by_stem[stem] = result.analysis
+
+    def _reuse_partner_name(self, item: PhotoItem) -> str:
+        partner = self._store.find_raster_analysis_for_stem(file_stem(item.filename))
+        return partner.filename if partner else "JPEG partner in this batch"
+
+    def _reused_analysis_for_item(
+        self,
+        item: PhotoItem,
+        analysis_by_stem: dict[str, PhotoAnalysis],
+        in_flight_raster: dict[str, Future[PhotoAnalysis]] | None = None,
+    ) -> PhotoAnalysis | None:
+        if not self._settings.reuse_jpeg_analysis_for_raw or not is_raw(item.filename):
+            return None
+        stem = file_stem(item.filename)
+        cached = analysis_by_stem.get(stem)
+        if cached is not None:
+            return cached
+        if in_flight_raster is not None and stem in in_flight_raster:
+            analysis = in_flight_raster.pop(stem).result()
+            analysis_by_stem[stem] = analysis
+            return analysis
+        stored = self._store.find_raster_analysis_for_stem(stem)
+        if stored is None:
+            return None
+        return PhotoAnalysis(description=stored.description, tags=list(stored.tags))
 
     def _should_process(self, item: PhotoItem, *, force: bool) -> bool:
         if force:
@@ -86,6 +298,11 @@ class PhotoProcessor:
                 return False
         return True
 
+    def _location_context_for_item(self, item: PhotoItem) -> str | None:
+        if not self._settings.use_location_in_prompt:
+            return None
+        return format_location_prompt(item.address, item.gps)
+
     def _process_one(
         self,
         item: PhotoItem,
@@ -93,7 +310,27 @@ class PhotoProcessor:
         tag_cache: dict[str, int],
         dry_run: bool,
         force: bool = False,
+        reused_analysis: PhotoAnalysis | None = None,
     ) -> PhotoAnalysisResult:
+        if reused_analysis is not None:
+            return self._apply_writes(
+                item,
+                reused_analysis,
+                tag_cache=tag_cache,
+                dry_run=dry_run,
+                force=force,
+                reused_from=self._reuse_partner_name(item),
+            )
+        analysis = self._run_vision(item)
+        return self._apply_writes(
+            item,
+            analysis,
+            tag_cache=tag_cache,
+            dry_run=dry_run,
+            force=force,
+        )
+
+    def _run_vision(self, item: PhotoItem) -> PhotoAnalysis:
         t0 = time.monotonic()
         image_bytes = self._client.download_thumbnail(
             item, size=self._settings.synology_thumbnail_size
@@ -119,10 +356,12 @@ class PhotoProcessor:
             )
 
         t1 = time.monotonic()
+        location_context = self._location_context_for_item(item)
         analysis = self._analyzer.analyze(
             image_bytes=image_bytes,
             filename=item.filename,
             mime_type=mime_type,
+            location_context=location_context,
         )
         logger.info(
             "Photo %s: NAS thumbnail %.1fs, vision %.1fs",
@@ -130,6 +369,24 @@ class PhotoProcessor:
             download_s,
             time.monotonic() - t1,
         )
+        return analysis
+
+    def _apply_writes(
+        self,
+        item: PhotoItem,
+        analysis: PhotoAnalysis,
+        *,
+        tag_cache: dict[str, int],
+        dry_run: bool,
+        force: bool,
+        reused_from: str | None = None,
+    ) -> PhotoAnalysisResult:
+        if reused_from is not None:
+            logger.info(
+                "Reusing analysis from %s for %s (no vision call)",
+                reused_from,
+                item.filename,
+            )
 
         if dry_run:
             if force:

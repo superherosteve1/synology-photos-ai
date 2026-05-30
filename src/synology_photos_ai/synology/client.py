@@ -19,6 +19,8 @@ LIST_ADDITIONAL = [
     "resolution",
     "tag",
     "description",
+    "gps",
+    "address",
 ]
 
 
@@ -32,6 +34,8 @@ class PhotoItem:
     thumbnail: dict[str, Any] | None
     tags: list[dict[str, Any]] = field(default_factory=list)
     description: str | None = None
+    gps: dict[str, Any] | None = None
+    address: dict[str, Any] | None = None
 
     @property
     def is_photo(self) -> bool:
@@ -125,6 +129,8 @@ class SynologyPhotosClient:
             thumbnail=(additional.get("thumbnail") or None),
             tags=list(additional.get("tag") or []),
             description=additional.get("description"),
+            gps=additional.get("gps") or None,
+            address=additional.get("address") or None,
         )
 
     def count_photos(self, *, folder_id: int | None = None) -> int:

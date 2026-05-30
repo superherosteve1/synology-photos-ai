@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
+from synology_photos_ai.pipeline.filenames import file_stem, is_raster
+
 
 @dataclass
 class ProcessState:
@@ -95,6 +97,31 @@ class StateStore:
                 )
             )
         return result
+
+    def find_raster_analysis_for_stem(self, stem: str) -> ProcessState | None:
+        """Most recent processed raster (JPEG, etc.) with the same basename stem."""
+        stem_lower = stem.lower()
+        rows = self._conn.execute(
+            """
+            SELECT photo_id, filename, description, tags_json, model, processed_at
+            FROM processed
+            """
+        ).fetchall()
+        best: ProcessState | None = None
+        for photo_id, filename, description, tags_json, model, processed_at in rows:
+            if file_stem(filename) != stem_lower or not is_raster(filename):
+                continue
+            candidate = ProcessState(
+                photo_id=photo_id,
+                filename=filename,
+                description=description,
+                tags=json.loads(tags_json),
+                processed_at=processed_at,
+                model=model,
+            )
+            if best is None or processed_at > best.processed_at:
+                best = candidate
+        return best
 
     @staticmethod
     def now_iso() -> str:
