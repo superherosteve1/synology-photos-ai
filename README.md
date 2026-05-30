@@ -305,7 +305,7 @@ pip install -e .
 synology-photos-ai ping                              # test NAS login
 synology-photos-ai process --limit 5 --dry-run       # test Ollama + vision (no writes)
 synology-photos-ai process                           # batch tag library
-synology-photos-ai process --force --limit 20        # re-tag: replace ai-* tags + description
+synology-photos-ai process --force --limit 20        # re-tag: replace ai-* tags (description if WRITE_DESCRIPTION=true)
 synology-photos-ai watch                             # poll Recently Added
 ```
 
@@ -345,7 +345,7 @@ See [Docker](README.md#docker) for networking details.
 | `TAG_PREFIX` | Prefix for generated tags (default `ai`, e.g. `ai-beach`) |
 | `MAX_TAGS` | Max tags per photo (default 12) |
 | `SKIP_IF_TAGGED` | Skip photos that already have `ai-*` tags (ignored when using `--force`) |
-| `WRITE_DESCRIPTION` | Write description via `Browse.Item.set` (metadata/EXIF field — see [Notes](README.md#notes-and-limitations)) |
+| `WRITE_DESCRIPTION` | Write description via `Browse.Item.set` (metadata/EXIF field — see [Notes](README.md#notes-and-limitations)). **`--force` does not override this** — set `false` to re-tag while keeping manual descriptions on Synology |
 | `WATCH_INTERVAL_SECONDS` | Poll interval for `watch` (default 300) |
 | `STATE_PATH` | SQLite state file (default `.state/processed.db`; Docker uses `/data/processed.db`) |
 
@@ -389,7 +389,7 @@ synology-photos-ai process --force --limit 10 --dry-run
 synology-photos-ai process --force --limit 100   # or omit --limit for the whole library
 ```
 
-`--force` bypasses skip rules, **removes existing `ai-*` tags** (per `TAG_PREFIX`) on each photo, writes the new tags, and **overwrites the description**. Non-`ai-*` tags you added manually are left alone.
+`--force` bypasses skip rules, **removes existing `ai-*` tags** (per `TAG_PREFIX`) on each photo, and writes the new tags. It **overwrites the description only when `WRITE_DESCRIPTION=true`** (default) — set `WRITE_DESCRIPTION=false` to refresh `ai-*` tags after a model change while preserving descriptions you edited manually in Photos. Non-`ai-*` tags you added manually are left alone.
 
 To re-process only photos that have `ai-*` tags but are not in local state, set `SKIP_IF_TAGGED=false` instead of `--force` (tags will accumulate unless you also use `--force`).
 

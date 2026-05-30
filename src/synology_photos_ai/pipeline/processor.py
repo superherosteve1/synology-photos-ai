@@ -393,7 +393,14 @@ class PhotoProcessor:
                 old = self._existing_prefix_tag_names(item)
                 if old:
                     console.print(f"  [dim]would remove tags: {', '.join(old)}[/dim]")
-            console.print(f"[cyan]DRY RUN[/cyan] {item.filename}: {analysis.description}")
+            console.print(f"[cyan]DRY RUN[/cyan] {item.filename}")
+            if self._settings.write_description:
+                console.print(f"  description: {analysis.description}")
+            else:
+                console.print(
+                    f"  [dim]description (WRITE_DESCRIPTION=false — would not write): "
+                    f"{analysis.description}[/dim]"
+                )
             console.print(f"  tags: {', '.join(analysis.tags)}")
             return PhotoAnalysisResult(item=item, analysis=analysis)
 

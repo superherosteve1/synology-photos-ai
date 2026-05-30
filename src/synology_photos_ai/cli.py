@@ -56,7 +56,8 @@ def process(
         typer.Option(
             help=(
                 "Re-process photos even if already in local state or tagged with ai-*; "
-                "removes old ai-* tags and replaces description"
+                "removes old ai-* tags and applies new tags. Descriptions are written "
+                "only when WRITE_DESCRIPTION=true"
             )
         ),
     ] = False,
