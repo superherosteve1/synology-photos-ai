@@ -164,11 +164,6 @@ Third full **`process --force`** on the same Shared Space library, with **newer 
 
 **Takeaway:** Larger NAS thumbnails + **`VISION_MAX_EDGE=1024`** and **`USE_LOCATION_IN_PROMPT=true`** cost wall-clock time vs Run 2, but vision inference alone stayed ~sub-second per photo in logs — most of the delta is download/resize and NAS writes. For bulk re-tags, **`m`** + **`768`** on the **4500** remains faster; use Run 3’s settings when you want **richer thumbnails** and **factual place names** in prompts.
 
-Retry the **2** failed items without re-processing the library:
-
-```bash
-synology-photos-ai process -v
-```
 
 ### What worked well
 
